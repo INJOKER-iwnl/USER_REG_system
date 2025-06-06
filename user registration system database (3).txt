@@ -1,0 +1,70 @@
+CREATE DATABASE user_system;
+
+USE user_system;
+
+
+CREATE TABLE IF NOT EXISTS plans (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    plan_name VARCHAR(100) NOT NULL,
+    speed VARCHAR(50) NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    role VARCHAR(20) DEFAULT 'user',
+    is_verified BOOLEAN DEFAULT 0,
+    verification_token VARCHAR(255) DEFAULT NULL,
+    plan_id INT DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (plan_id) REFERENCES plans(id) ON DELETE SET NULL
+);
+
+
+CREATE TABLE IF NOT EXISTS subscriptions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    plan_id INT NOT NULL,
+    subscribed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('active', 'cancelled') DEFAULT 'active',
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (plan_id) REFERENCES plans(id) ON DELETE CASCADE
+);
+CREATE TABLE user_plans (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    plan_id INT NOT NULL,
+    subscription_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (plan_id) REFERENCES plans(id)
+);
+CREATE TABLE login_attempts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(255),
+    attempt_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO users (name, email, password, role, created_at, is_verified)
+VALUES (
+  'Admin',
+  'admin@example.com',
+  '$2y$10$ZK.btjB.7mLJfAm.k9Xbk.abf/ymyP6bixuZoVuhs9Q2I8Gwzn0Sq',
+  'admin',
+  NOW(),
+1
+);
+
+
+INSERT INTO plans (plan_name, speed, price, description) VALUES
+('Starter Plan', 30, 9000, 'Basic internet plan suitable for light browsing and social media.'),
+('Basic Plus', 50, 12000, 'Great for small families. Stream videos and browse comfortably.'),
+('Standard Plan', 80, 15600, 'Good for HD streaming, online meetings, and downloads.'),
+('Premium Plan', 100, 18000, 'Ideal for gamers and remote workers. High-speed and stable.'),
+('Ultimate Plan', 150, 21600, 'Best performance for heavy users and multiple devices.');
+
+
