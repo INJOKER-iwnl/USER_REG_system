@@ -5,35 +5,30 @@ if (!isset($_SESSION['user'])) {
     exit();
 }
 
+require_once 'db.php';
+require_once 'repositories/SubscriptionRepository.php';
+
 $user_id = $_SESSION['user']['id'];
 $subscription_id = $_GET['sub_id'] ?? null;
 
-$conn = new mysqli("localhost", "root", "", "user_system");
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
+$conn = DB::getInstance();
+$subscriptionRepo = new SubscriptionRepository($conn);
 
-// Fetch the current subscription to confirm ownership
-$stmt = $conn->prepare("SELECT plan_id FROM subscriptions WHERE id = ? AND user_id = ?");
-$stmt->bind_param("ii", $subscription_id, $user_id);
-$stmt->execute();
-$result = $stmt->get_result();
-
-if (!$result->num_rows) {
-    die("Subscription not found.");
+// Fetch current subscription to verify ownership
+$current = $subscriptionRepo->getSubscriptionById((int)$subscription_id, (int)$user_id);
+if (!$current) {
+    die("Subscription not found or unauthorized.");
 }
-$current = $result->fetch_assoc();
 
 // Get all plans
-$plans = $conn->query("SELECT * FROM plans");
+$plansResult = $conn->query("SELECT * FROM plans");
 
 // If form submitted, update plan
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['new_plan_id'])) {
-    $newPlanId = $_POST['new_plan_id'];
+    $newPlanId = (int)$_POST['new_plan_id'];
 
-    $update = $conn->prepare("UPDATE subscriptions SET plan_id = ? WHERE id = ? AND user_id = ?");
-    $update->bind_param("iii", $newPlanId, $subscription_id, $user_id);
-    if ($update->execute()) {
+    $updated = $subscriptionRepo->updateSubscriptionPlan((int)$subscription_id, (int)$user_id, $newPlanId);
+    if ($updated) {
         header("Location: subscription.php?message=Subscription updated.");
         exit();
     } else {
@@ -49,7 +44,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['new_plan_id'])) {
     <style>
         body {
             font-family: 'Segoe UI', sans-serif;
-            background: linear-gradient(to right, #2c3e50, #4ca1af);
+            background-image: url('img/sky.png');
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+            background-attachment: fixed;
             color: #fff;
             display: flex;
             justify-content: center;
@@ -123,7 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['new_plan_id'])) {
     <form method="post">
         <label for="new_plan_id">Choose a new plan:</label>
         <select name="new_plan_id" id="new_plan_id" required>
-            <?php while ($plan = $plans->fetch_assoc()): ?>
+            <?php while ($plan = $plansResult->fetch_assoc()): ?>
                 <option value="<?= $plan['id'] ?>" <?= $plan['id'] == $current['plan_id'] ? 'selected' : '' ?>>
                     <?= htmlspecialchars($plan['plan_name']) ?> - Rs. <?= htmlspecialchars($plan['price']) ?>
                 </option>

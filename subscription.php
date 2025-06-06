@@ -1,6 +1,10 @@
 <?php
 session_start();
 
+require_once 'db.php';
+require_once 'repositories/UserRepository.php';
+require_once 'repositories/SubscriptionRepository.php';
+
 if (!isset($_SESSION['user'])) {
     header("Location: login.php");
     exit();
@@ -9,23 +13,17 @@ if (!isset($_SESSION['user'])) {
 $user = $_SESSION['user'];
 $user_id = $user['id'];
 
-$conn = new mysqli("localhost", "root", "", "user_system");
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
+$conn = DB::getInstance();
+$subRepo = new SubscriptionRepository($conn);
 
-// Get the user's active subscription (only one assumed)
+// Get the user's active subscription
 $currentPlanId = null;
 $subscription_id = null;
-$subQuery = $conn->prepare("SELECT id, plan_id FROM subscriptions WHERE user_id = ? AND status = 'active' LIMIT 1");
-$subQuery->bind_param("i", $user_id);
-$subQuery->execute();
-$subResult = $subQuery->get_result();
-if ($subRow = $subResult->fetch_assoc()) {
-    $currentPlanId = $subRow['plan_id'];
-    $subscription_id = $subRow['id'];
+$currentSubscription = $subRepo->getSubscriptionByUserId($user_id);
+if ($currentSubscription) {
+    $currentPlanId = $currentSubscription['plan_id'];
+    $subscription_id = $currentSubscription['id'];
 }
-$subQuery->close();
 
 $search = $_GET['search'] ?? '';
 $speedFilter = $_GET['speed_filter'] ?? '';
@@ -53,7 +51,7 @@ $plans = $conn->query($query);
     body {
         font-family: 'Segoe UI', sans-serif;
         height: 100vh;
-        background-image: url('img/kathmandu.jpg');
+        background-image: url('img/sky.png');
         background-size: cover;
         background-position: center;
         background-repeat: no-repeat;
